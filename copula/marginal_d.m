@@ -1,0 +1,94 @@
+clear; clc; close all; % 清除变量
+
+% 读取数据
+a = xlsread('data1.xlsx'); % 读取所有数据
+x1 = a(:,3); % 读取第3列数据
+n = length(x1);
+
+% 常见分布参数估计
+pd1 = fitdist(x1,'normal');   % 正态分布参数拟合
+pd2 = fitdist(x1,'GeneralizedExtremeValue'); % GEV分布参数拟合
+
+% 输出拟合的分布参数
+disp('Normal Distribution Parameters:');
+disp(pd1);
+disp('GEV Distribution Parameters:');
+disp(pd2);
+
+% 画概率密度图
+figure(1);
+hold on;
+[f, xc] = ecdf(x1); % 调用ecdf函数计算xc处的经验分布函数值f
+ecdfhist(f, xc, 10); % 绘制频率直方图,数字15可以控制条形的个数
+h = findobj(gca,'Type','patch');
+h.FaceColor = [0.8 0.8 0.8]; % 控制颜色
+x_values = linspace(1*min(x1), 1*max(x1), 1000); % 画图横坐标范围
+
+% 画normal分布拟合曲线
+y1 = pdf(pd1, x_values);
+h1 = plot(x_values, y1, 'r', 'LineWidth', 1);
+
+% 画GEV分布拟合曲线
+y2 = pdf(pd2, x_values);
+h2 = plot(x_values, y2, 'g', 'LineWidth', 1); % 绘制拟合的分布函数图形
+
+legend([h h1 h2], '频率直方图', 'normal分布', 'gev分布');
+disp('.....................');
+box on;
+
+% 画累计概率图
+M = length(x1);
+x1 = sort(x1);
+figure(2);
+p1 = (1:M)./(M+1);
+p2 = cdf(pd1, sort(x1));
+plot(p1, p2, 'bo', 'Markersize', 3);
+hold on;
+plot(0:1, 0:1);
+xlabel('Empirical');
+ylabel('Model');
+title('-SPI 正态分布Probability Plot');
+
+figure(3);
+p1 = (1:M)./(M+1);
+p2 = cdf(pd2, sort(x1));
+plot(p1, p2, 'bo', 'Markersize', 3);
+hold on;
+plot(0:1, 0:1);
+xlabel('Empirical');
+ylabel('Model');
+title('-SPI GEV Probability Plot');
+
+cdf1 = [x1, cdf(pd1, x1)];  % normal
+cdf2 = [x1, cdf(pd2, x1)];  % GEV
+
+% 调用kstest函数
+[h1, p1, ksstat_pot1, cv1] = kstest(x1, cdf1); % ksstat1是ks值
+[h2, p2, ksstat_pot2, cv2] = kstest(x1, cdf2); % ksstat1是ks值
+
+% 输出KS检验结果
+disp('KS Test for Normal Distribution:');
+disp(['p-value: ', num2str(p1), ', KS Statistic: ', num2str(ksstat_pot1)]);
+disp('KS Test for GEV Distribution:');
+disp(['p-value: ', num2str(p2), ', KS Statistic: ', num2str(ksstat_pot2)]);
+
+% 算RMSE
+M = length(x1);
+m1 = ((1:M)./(M+1))';
+m21 = sort(cdf1(:, 2));
+m22 = sort(cdf2(:, 2));
+rmse1 = sqrt(mean((m21 - m1).^2));
+rmse2 = sqrt(mean((m22 - m1).^2));
+
+% 输出RMSE
+disp(['RMSE for Normal Distribution: ', num2str(rmse1)]);
+disp(['RMSE for GEV Distribution: ', num2str(rmse2)]);
+
+% 输出为表格
+data_points = table(p1, p2, x1_sorted, ...
+    'VariableNames', {'Empirical_CDF', 'GEV_CDF', 'Sorted_Data_Value'});
+
+% 显示前几行或导出
+disp('Data points (Empirical CDF vs GEV CDF):');
+disp(data_points);  % 显示所有点
+%writetable(data_points, 'GEV_CDF_points.csv'); % 可选：导出为CSV文件
